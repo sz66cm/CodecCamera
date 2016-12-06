@@ -40,8 +40,15 @@ public class ByteDealUtil {
 	 * 获取帧的TYPE类型
 	 */
 	public static int getTypeFromData(byte[] data) {
+		return getTypeFromData(data, 0);
+	}
+	/**
+	 * F NRI TPYE
+	 * 获取帧的TYPE类型
+	 */
+	public static int getTypeFromData(byte[] data, int position) {
 		int type = -1;
-		List<Integer> result = findStartCodeOffSet(data, 0);
+		List<Integer> result = findStartCodeOffSet(data, position);
 		if (result.size() > 0) {
 			type = data[result.get(0)] & 0x1F;
 		}
