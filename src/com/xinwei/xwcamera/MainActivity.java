@@ -29,10 +29,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback,  a
 	public static final String TAG = "MainActivity";
 	public static final String H264 = "video/avc";
 	
-	public static final int PREVIEW_SIZE_WIDTH = 352;
-	public static final int PREVIEW_SIZE_HEIGHT = 288;
-	public static final int PREVIEW_BIT_RATE = 50000;
-	public static final int PREVIEW_FRAME_RATE = 15;
+	public static final int PREVIEW_SIZE_WIDTH = 640;
+	public static final int PREVIEW_SIZE_HEIGHT = 480;
+	public static final int PREVIEW_BIT_RATE = 600000;
+	public static final int PREVIEW_FRAME_RATE = 25;
 	public static final int PREVIEW_I_FRAME_INTERVAL = 1;
 	
 	public static final int ENCODE_TIME_OUT = 0;

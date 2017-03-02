@@ -11,6 +11,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodec.BufferInfo;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
+import android.os.SystemClock;
 import android.util.Log;
 import static com.xinwei.xwcamera.MainActivity.H264;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_SIZE_WIDTH;
@@ -59,6 +60,7 @@ public class Encoder {
 			encoder = null;
 		}
 	}
+	long cctime = 0;
 	/**
 	 * 同步编码方法
 	 * @param dst
@@ -66,34 +68,44 @@ public class Encoder {
 	 * @return
 	 */
 	public int syncEncode(byte[] src) {
-		int len = -1;
-		//喂数据
-		int ii = encoder.dequeueInputBuffer(ENCODE_TIME_OUT);
-		if(ii >= 0) {
-			ByteBuffer inBuffer = encoder.getInputBuffers()[ii];
-			inBuffer.clear();
-			inBuffer.put(src, 0, src.length);
-			encoder.queueInputBuffer(ii, 0, src.length, presentationTimeUs += 3600, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
-		}
-		//取数据
-		BufferInfo info = new BufferInfo();
-		int oi = encoder.dequeueOutputBuffer(info, ENCODE_TIME_OUT);
-		while (oi == -2) {
-			oi = encoder.dequeueOutputBuffer(info, ENCODE_TIME_OUT);
-		}
-		if (oi >= 0) {
-			//取数据
-			ByteBuffer outBuffer = encoder.getOutputBuffers()[oi];
-			len = outBuffer.capacity();
-			byte[] dst = new byte[len];
-			outBuffer.get(dst, 0, len);
-			//传输数据
-			prepareOffer(dst);
-			//释放数据
-			encoder.releaseOutputBuffer(oi, false);
-		}
-		return len;
-	}
+        int len = -1;
+        long startTime = SystemClock.elapsedRealtime();
+        //喂数据
+        int ii = encoder.dequeueInputBuffer(ENCODE_TIME_OUT);
+        if(ii >= 0) {
+            ByteBuffer inBuffer = encoder.getInputBuffers()[ii];
+            inBuffer.clear();
+            inBuffer.put(src, 0, src.length);
+            encoder.queueInputBuffer(ii, 0, src.length, presentationTimeUs += 3600, MediaCodec.BUFFER_FLAG_CODEC_CONFIG);
+        }
+        //取数据
+        BufferInfo info = new BufferInfo();
+        int oi = encoder.dequeueOutputBuffer(info, ENCODE_TIME_OUT);
+        while (oi == -2) {
+            oi = encoder.dequeueOutputBuffer(info, ENCODE_TIME_OUT);
+        }
+        if (oi >= 0) {
+            //取数据
+            ByteBuffer outBuffer = encoder.getOutputBuffers()[oi];
+            //这个长度是outBuffer的最大容量长度,并非H264数据实际长度.
+			//H264数据实际长度应该从MediaCodec.BufferInfo对象的成员变量size去取.
+			//如果使用了outBuffer.capacity()的长度,出现编解码端花屏
+			//并且十分的卡顿,打印发现H264的实际长度比outBuffer.capacity()小很多
+			//这个得十分注意,如下错误代码已注释
+            len = outBuffer.capacity();
+//          byte[] dst = new byte[len];
+//          outBuffer.get(dst, 0, len);
+            byte[] dst = new byte[info.size];
+            outBuffer.get(dst);
+            Log.i(TAG, "syncEncode() cost time = " + (SystemClock.elapsedRealtime() - startTime) + " ms" 
+                    + " info.size = " + info.size + " outBuffer.capacity() = " + len);
+            //传输数据
+            prepareOffer(dst);
+            //释放数据
+            encoder.releaseOutputBuffer(oi, false);
+        }
+        return len;
+    }
 	/**
 	 * 为发送准备
 	 * @param data
