@@ -13,3 +13,8 @@
 
 ## 解决停滞不动的问题:
 	在编码发送数据时,遇到I帧,就在I帧前添加SPS,PPS.解决问题.
+	
+## 关于:H264 Android编解码类MediaCodec,ByteBuffer扫盲
+		经MediaCodec编码后,在取H264数据时,应注意,H264的长度在MediaCodec.BufferInfo对象的成员变量
+	size,而不是ByteBuffer.capacity()的长度,打印发现H264的实际长度比outBuffer.capacity()
+	小很多,所以,在解码的时候,如果使用了ByteBuffer.capacity()的长度取数据,导致视频花屏,而且卡顿
