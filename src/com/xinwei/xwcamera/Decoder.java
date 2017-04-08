@@ -5,12 +5,15 @@ import static com.xinwei.xwcamera.MainActivity.FLAG_DECODER;
 import static com.xinwei.xwcamera.MainActivity.H264;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_SIZE_HEIGHT;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_SIZE_WIDTH;
+import static com.xinwei.xwcamera.util.LogUtil.L;
+import static com.xinwei.xwcamera.util.LogUtil.LM;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.xinwei.xwcamera.util.ByteDealUtil;
+import com.xinwei.xwcamera.util.FileUtil;
 
 import android.annotation.SuppressLint;
 import android.media.MediaCodec;
@@ -37,8 +40,12 @@ public class Decoder {
 
 	private boolean hasConfiged = false;
 	private boolean hasFirstI = false;
+
+	private ByteBuffer[] inputBuffers;
+	private ByteBuffer[] outputBuffers;
 	
 	public Decoder(Surface surface, ArrayBlockingQueue<byte[]> frameQueue) {
+		LM();
 		this.frameQueue = frameQueue;
 		this.surface = surface;
 		decoderMediaFormat = MediaFormat.createVideoFormat(H264, PREVIEW_SIZE_WIDTH, PREVIEW_SIZE_HEIGHT);
@@ -46,13 +53,17 @@ public class Decoder {
 	}
 	
 	public void open() throws Exception {
+		LM();
 		decoder = MediaCodec.createDecoderByType(H264);
 		decoder.configure(decoderMediaFormat, surface, null, FLAG_DECODER);
 		decoder.start();
+		inputBuffers = decoder.getInputBuffers();
+		outputBuffers = decoder.getOutputBuffers();
 		Log.i(TAG, "open()");
 	}
 	
 	public void close() {
+		LM();
 		if (decoder != null) {
 			decoder.stop();
 			decoder.release();
@@ -68,7 +79,7 @@ public class Decoder {
 	 * @return
 	 */
 	public boolean preparePlay(byte[] temp, MediaCodec mc) {
-		Log.i(TAG, "preparePlay() Type = " + ByteDealUtil.getTypeFromData(temp));
+		L("preparePlay() Type = " + ByteDealUtil.getTypeFromData(temp));
 		if (!hasConfiged) {
 			//缓存SPS PPS 
 			if(ByteDealUtil.getTypeFromData(temp) == SPS_FRAME ) {
@@ -78,12 +89,12 @@ public class Decoder {
 				if (SPS == null) {
 					SPS = new byte[spslen];
 					System.arraycopy(temp, 0, SPS, 0, spslen);
-					Log.i(TAG, "preparePlay() SPS is prepare!");
+					L("preparePlay() SPS is prepare!");
 				}
 				if (PPS == null) {
 					PPS = new byte[ppslen];
 					System.arraycopy(temp, spslen, PPS, 0, ppslen);
-					Log.i(TAG, "preparePlay() PPS is prepare!");
+					L("preparePlay() PPS is prepare!");
 				}
 			}
 			boolean result = (SPS != null) && (PPS != null);
@@ -101,31 +112,36 @@ public class Decoder {
 		}
 		return hasConfiged;
 	}
-	
+	private byte[] yuv = new byte[PREVIEW_SIZE_WIDTH * PREVIEW_SIZE_HEIGHT * 3 / 2];
 	public void decodeAndPlay() throws Exception {
-		Log.i(TAG, "decodeAndPlay() start ");
+		LM();
 		byte[] temp = frameQueue.take();
 		if (preparePlay(temp, decoder)) {
 			int bufferFlag = 0;
 			//喂数据
 			int ii = decoder.dequeueInputBuffer(ENCODE_TIME_OUT);
 			if (ii >= 0) {
-				ByteBuffer inBuffer = decoder.getInputBuffers()[ii];
+				ByteBuffer inBuffer = inputBuffers[ii];
 				inBuffer.clear();
 				inBuffer.put(temp, 0, temp.length);
+				FileUtil.writefile("/sdcard/h180.h264", temp);
 				decoder.queueInputBuffer(ii, 0, temp.length, 0, bufferFlag);
 			}
 			//取数据并且显示
 			BufferInfo info = new BufferInfo();
 			int oi = decoder.dequeueOutputBuffer(info, 0);
-			while (oi == -2) {
-				oi = decoder.dequeueOutputBuffer(info, 0);
-			}
 			if (oi >= 0) {
+				ByteBuffer outBuffer = outputBuffers[oi];
+				outBuffer.position(info.offset);
+				outBuffer.limit(info.offset + info.size);
+				outBuffer.get(yuv, 0, info.size);
+				FileUtil.writefile("/sdcard/cmyuv1.yuv", yuv, 0, info.size);
+				outBuffer.position(info.offset);
+				outBuffer.limit(info.offset + info.size);
 				decoder.releaseOutputBuffer(oi, true);
 			}
 		}
-		Log.i(TAG, "decodeAndPlay() end ");
+		L("decodeAndPlay() end ");
 	}
 
 	public ArrayBlockingQueue<byte[]> getFrameQueue() {
