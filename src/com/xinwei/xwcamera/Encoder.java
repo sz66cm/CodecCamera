@@ -12,7 +12,6 @@ import android.media.MediaCodec.BufferInfo;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.SystemClock;
-import android.util.Log;
 import static com.xinwei.xwcamera.MainActivity.H264;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_SIZE_WIDTH;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_SIZE_HEIGHT;
@@ -20,6 +19,7 @@ import static com.xinwei.xwcamera.MainActivity.PREVIEW_BIT_RATE;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_FRAME_RATE;
 import static com.xinwei.xwcamera.MainActivity.PREVIEW_I_FRAME_INTERVAL;
 import static com.xinwei.xwcamera.MainActivity.ENCODE_TIME_OUT;
+import static com.xinwei.xwcamera.util.LogUtil.*;
 @SuppressLint("NewApi") 
 public class Encoder {
 	
@@ -97,7 +97,7 @@ public class Encoder {
 //          outBuffer.get(dst, 0, len);
             byte[] dst = new byte[info.size];
             outBuffer.get(dst);
-            Log.i(TAG, "syncEncode() cost time = " + (SystemClock.elapsedRealtime() - startTime) + " ms" 
+            L("syncEncode() cost time = " + (SystemClock.elapsedRealtime() - startTime) + " ms" 
                     + " info.size = " + info.size + " outBuffer.capacity() = " + len);
             //传输数据
             prepareOffer(dst);
@@ -133,7 +133,7 @@ public class Encoder {
 					SPS = new byte[len + START_CODE.length];
 					System.arraycopy(START_CODE, 0, SPS, 0, START_CODE.length);
 					System.arraycopy(data, listOffset.get(i), SPS, START_CODE.length, len);
-					Log.i(TAG, "prepareOffer() SPS is prepare!");
+					L("prepareOffer() SPS is prepare!");
 				}
 				//2.PPS
 				if ((PPS == null) && ((data[listOffset.get(i)] & 0x1F) == 8)) {
@@ -145,7 +145,7 @@ public class Encoder {
 					PPS = new byte[len + START_CODE.length];
 					System.arraycopy(START_CODE, 0, PPS, 0, START_CODE.length);
 					System.arraycopy(data, listOffset.get(i), PPS, START_CODE.length, len);
-					Log.i(TAG, "prepareOffer() PPS is prepare!");
+					L("prepareOffer() PPS is prepare!");
 				}
 				//3.找到SPS和PPS后,再第一个I帧
 				if ((SPS != null) && (PPS != null) && !hasFirstI && ((data[listOffset.get(i)] & 0x1F) == 5)) {
@@ -156,7 +156,7 @@ public class Encoder {
 					frameQueue.offer(spps);
 					frameQueue.offer(data);
 					canStartOffer = true;
-					Log.i(TAG, "prepareOffer() offer prepare finish!");
+					L("prepareOffer() offer prepare finish!");
 				}
 			}
 		}
